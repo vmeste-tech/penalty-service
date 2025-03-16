@@ -15,7 +15,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: penalty_db
+          POSTGRES_DB: penalties_db
         ports:
           - 5435:5432
         options: >-
