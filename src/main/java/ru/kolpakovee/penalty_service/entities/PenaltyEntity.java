@@ -1,11 +1,13 @@
 package ru.kolpakovee.penalty_service.entities;
 
 import jakarta.persistence.*;
+import lombok.Setter;
 import ru.kolpakovee.penalty_service.enums.PaymentStatus;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Setter
 @Entity
 @Table(name = "penalties")
 public class PenaltyEntity {
@@ -21,7 +23,7 @@ public class PenaltyEntity {
     @Column(name = "assigned_to", nullable = false)
     private UUID assignedTo;
 
-    @Column(name = "rule_to", nullable = false)
+    @Column(name = "rule_id", nullable = false)
     private UUID ruleId;
 
     @Column(name = "fine_amount", nullable = false)

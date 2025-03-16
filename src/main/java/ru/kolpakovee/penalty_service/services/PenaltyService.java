@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.kolpakovee.penalty_service.clients.UserServiceClient;
 import ru.kolpakovee.penalty_service.entities.PenaltyEntity;
+import ru.kolpakovee.penalty_service.enums.PaymentStatus;
 import ru.kolpakovee.penalty_service.mappers.PenaltyMapper;
 import ru.kolpakovee.penalty_service.records.CreatePenaltyRequest;
 import ru.kolpakovee.penalty_service.records.PenaltyDto;
@@ -22,6 +23,12 @@ public class PenaltyService {
 
     public PenaltyDto createPenalty(CreatePenaltyRequest request) {
         PenaltyEntity penaltyEntity = new PenaltyEntity();
+        penaltyEntity.setApartmentId(request.apartmentId());
+        penaltyEntity.setStatus(PaymentStatus.UNPAID);
+        penaltyEntity.setAssignedDate(LocalDateTime.now());
+        penaltyEntity.setFineAmount(request.fineAmount());
+        penaltyEntity.setRuleId(request.ruleId());
+        penaltyEntity.setAssignedTo(request.assignedTo());
 
         return PenaltyMapper.INSTANCE.toDto(penaltyRepository.save(penaltyEntity));
     }
