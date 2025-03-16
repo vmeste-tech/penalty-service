@@ -2,13 +2,39 @@ package ru.kolpakovee.penalty_service.services;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import ru.kolpakovee.penalty_service.clients.UserServiceClient;
+import ru.kolpakovee.penalty_service.entities.PenaltyEntity;
+import ru.kolpakovee.penalty_service.mappers.PenaltyMapper;
 import ru.kolpakovee.penalty_service.records.CreatePenaltyRequest;
 import ru.kolpakovee.penalty_service.records.PenaltyDto;
+import ru.kolpakovee.penalty_service.repositories.PenaltyRepository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class PenaltyService {
+
+    private final PenaltyRepository penaltyRepository;
+    private final UserServiceClient userServiceClient;
+
     public PenaltyDto createPenalty(CreatePenaltyRequest request) {
-        throw new UnsupportedOperationException();
+        PenaltyEntity penaltyEntity = new PenaltyEntity();
+
+        return PenaltyMapper.INSTANCE.toDto(penaltyRepository.save(penaltyEntity));
+    }
+
+    public List<PenaltyDto> getApartmentPenalties(LocalDateTime start, LocalDateTime end) {
+        if (start != null && end != null && start.isAfter(end)) {
+            throw new IllegalArgumentException("Некорректный временной интервал");
+        }
+
+        UUID apartmentId = userServiceClient.getApartmentByToken().apartmentId();
+
+        return penaltyRepository.findByApartmentIdAndPeriod(apartmentId, start, end).stream()
+                .map(PenaltyMapper.INSTANCE::toDto)
+                .toList();
     }
 }
