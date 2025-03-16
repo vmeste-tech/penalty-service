@@ -6,7 +6,7 @@ spring:
     name: penalty-service
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5435/penalty_db}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5435/penalties_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
   jpa:
@@ -21,7 +21,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${RESOURCE_SERVER_ISSUER_URI:http://localhost:8080/realms/test-realm}
+          issuer-uri: ${RESOURCE_SERVER_ISSUER_URI:http://localhost:8080/realms/vmeste.tech}
 
 integration:
   services:

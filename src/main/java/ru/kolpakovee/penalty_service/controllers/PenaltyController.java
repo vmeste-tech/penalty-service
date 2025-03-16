@@ -19,7 +19,7 @@ public class PenaltyController {
     private final PenaltyService penaltyService;
 
     @PostMapping
-    public PenaltyDto createPenalty(CreatePenaltyRequest request) {
+    public PenaltyDto createPenalty(@RequestBody CreatePenaltyRequest request) {
         return penaltyService.createPenalty(request);
     }
 

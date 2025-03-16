@@ -1,6 +1,7 @@
 package ru.kolpakovee.penalty_service.entities;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 import lombok.Setter;
 import ru.kolpakovee.penalty_service.enums.PaymentStatus;
 
@@ -8,6 +9,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Setter
+@Getter
 @Entity
 @Table(name = "penalties")
 public class PenaltyEntity {
