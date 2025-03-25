@@ -6,15 +6,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.kolpakovee.penalty_service.clients.RulesServiceClient;
 import ru.kolpakovee.penalty_service.clients.TaskServiceClient;
+import ru.kolpakovee.penalty_service.clients.UserServiceClient;
 import ru.kolpakovee.penalty_service.entities.PenaltyEntity;
 import ru.kolpakovee.penalty_service.enums.PaymentStatus;
 import ru.kolpakovee.penalty_service.enums.RuleStatus;
 import ru.kolpakovee.penalty_service.exceptions.NotFoundException;
 import ru.kolpakovee.penalty_service.mappers.PenaltyMapper;
-import ru.kolpakovee.penalty_service.records.CreatePenaltyRequest;
-import ru.kolpakovee.penalty_service.records.PenaltyDto;
-import ru.kolpakovee.penalty_service.records.RuleDto;
-import ru.kolpakovee.penalty_service.records.TaskDto;
+import ru.kolpakovee.penalty_service.records.*;
 import ru.kolpakovee.penalty_service.repositories.PenaltyRepository;
 
 import java.time.LocalDateTime;
@@ -32,6 +30,7 @@ public class PenaltyService {
 
     private final TaskServiceClient taskServiceClient;
     private final RulesServiceClient rulesServiceClient;
+    private final UserServiceClient userServiceClient;
 
     public PenaltyDto createPenalty(CreatePenaltyRequest request) {
         PenaltyEntity penaltyEntity = new PenaltyEntity();
@@ -46,42 +45,43 @@ public class PenaltyService {
     }
 
     @Transactional
-    public List<PenaltyDto> getApartmentPenalties(UUID apartmentId,
-                                                  @NotNull LocalDateTime start,
-                                                  @NotNull LocalDateTime end) {
-        if (start != null && end != null && start.isAfter(end)) {
-            throw new IllegalArgumentException("Некорректный временной интервал");
-        }
-
-        assert start != null;
-        assert end != null;
-
-        Map<UUID, Double> rules = rulesServiceClient.getApartmentRules(apartmentId).stream()
+    public List<PenaltyResponse> getApartmentPenalties(UUID apartmentId) {
+        Map<UUID, RuleDto> rules = rulesServiceClient.getApartmentRules(apartmentId).stream()
                 .filter(r -> r.status().equals(RuleStatus.ACCEPTED))
-                .collect(Collectors.toMap(RuleDto::id, RuleDto::penaltyAmount));
+                .collect(Collectors.toMap(RuleDto::id, ruleDto -> ruleDto));
 
         // Просроченные задачи
-        List<TaskDto> tasks = taskServiceClient.getOverdueTasks(apartmentId, start.toLocalDate(), end.toLocalDate())
+        List<TaskDto> tasks = taskServiceClient.getOverdueTasks(apartmentId)
                 .stream()
                 .filter(t -> t.scheduledAt().isBefore(ZonedDateTime.now()))
                 .filter(t -> !t.isPenaltyCreated())
                 .toList();
+
+        Map<UUID, UserInfoDto> users = userServiceClient.getApartmentByToken().users().stream()
+                .collect(Collectors.toMap(UserInfoDto::id, u -> u));
 
         tasks.forEach(t -> {
             PenaltyEntity penaltyEntity = new PenaltyEntity();
             penaltyEntity.setApartmentId(apartmentId);
             penaltyEntity.setAssignedDate(t.scheduledAt().toLocalDateTime());
             penaltyEntity.setRuleId(t.ruleId());
-            penaltyEntity.setFineAmount(rules.get(t.ruleId()));
+            penaltyEntity.setFineAmount(rules.get(t.ruleId()).penaltyAmount());
             penaltyEntity.setStatus(PaymentStatus.UNPAID);
             penaltyEntity.setAssignedTo(t.assignedTo());
             // TODO: изменить статус задачи на штраф создан
             penaltyRepository.save(penaltyEntity);
         });
 
-        return penaltyRepository.findByApartmentIdAndPeriod(apartmentId, start, end)
+        return penaltyRepository.findAllByApartmentId(apartmentId)
                 .stream()
-                .map(PenaltyMapper.INSTANCE::toDto)
+                .map(p -> PenaltyResponse.builder()
+                        .id(p.getId())
+                        .assignedDate(p.getAssignedDate())
+                        .status(p.getStatus())
+                        .fineAmount(p.getFineAmount())
+                        .rule(rules.get(p.getRuleId()))
+                        .user(users.get(p.getAssignedTo()))
+                        .build())
                 .toList();
     }
 

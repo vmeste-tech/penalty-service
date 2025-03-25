@@ -4,16 +4,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.kolpakovee.penalty_service.enums.PaymentStatus;
 import ru.kolpakovee.penalty_service.records.CreatePenaltyRequest;
 import ru.kolpakovee.penalty_service.records.PenaltyDto;
+import ru.kolpakovee.penalty_service.records.PenaltyResponse;
 import ru.kolpakovee.penalty_service.services.PenaltyService;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,16 +34,9 @@ public class PenaltyController {
 
     @GetMapping("/{apartmentId}")
     @Operation(summary = "Получение штрафов по квартире",
-            description = "Позволяет получить все штрафы по идентификатору квартиры за указанный период")
-    public List<PenaltyDto> getApartmentPenalties(
-            @PathVariable UUID apartmentId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-
-        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
-        LocalDateTime end = endDate != null ? endDate.atTime(23, 59, 59) : null;
-
-        return penaltyService.getApartmentPenalties(apartmentId, start, end);
+            description = "Позволяет получить все штрафы по идентификатору квартиры")
+    public List<PenaltyResponse> getApartmentPenalties(@PathVariable UUID apartmentId) {
+        return penaltyService.getApartmentPenalties(apartmentId);
     }
 
     @PatchMapping("/{penaltyId}")

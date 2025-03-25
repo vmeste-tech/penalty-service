@@ -22,4 +22,6 @@ public interface PenaltyRepository extends JpaRepository<PenaltyEntity, UUID> {
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
     );
+
+    List<PenaltyEntity> findAllByApartmentId(UUID apartmentId);
 }

@@ -15,7 +15,5 @@ import java.util.UUID;
 public interface TaskServiceClient {
 
     @GetMapping("/api/v1/tasks/{apartmentId}/overdue")
-    List<TaskDto> getOverdueTasks(@PathVariable UUID apartmentId,
-                                  @RequestParam LocalDate startDate,
-                                  @RequestParam LocalDate endDate);
+    List<TaskDto> getOverdueTasks(@PathVariable UUID apartmentId);
 }
