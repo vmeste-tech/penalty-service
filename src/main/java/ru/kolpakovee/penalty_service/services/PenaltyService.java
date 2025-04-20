@@ -1,17 +1,18 @@
 package ru.kolpakovee.penalty_service.services;
 
 import jakarta.transaction.Transactional;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.kolpakovee.penalty_service.clients.RulesServiceClient;
 import ru.kolpakovee.penalty_service.clients.TaskServiceClient;
 import ru.kolpakovee.penalty_service.clients.UserServiceClient;
+import ru.kolpakovee.penalty_service.constants.NotificationMessages;
 import ru.kolpakovee.penalty_service.entities.PenaltyEntity;
 import ru.kolpakovee.penalty_service.enums.PaymentStatus;
 import ru.kolpakovee.penalty_service.enums.RuleStatus;
 import ru.kolpakovee.penalty_service.exceptions.NotFoundException;
 import ru.kolpakovee.penalty_service.mappers.PenaltyMapper;
+import ru.kolpakovee.penalty_service.producer.NotificationEventProducer;
 import ru.kolpakovee.penalty_service.records.*;
 import ru.kolpakovee.penalty_service.repositories.PenaltyRepository;
 
@@ -32,6 +33,9 @@ public class PenaltyService {
     private final RulesServiceClient rulesServiceClient;
     private final UserServiceClient userServiceClient;
 
+    private final NotificationEventProducer producer;
+
+    @Transactional
     public PenaltyDto createPenalty(CreatePenaltyRequest request) {
         PenaltyEntity penaltyEntity = new PenaltyEntity();
         penaltyEntity.setApartmentId(request.apartmentId());
@@ -40,6 +44,8 @@ public class PenaltyService {
         penaltyEntity.setFineAmount(request.fineAmount());
         penaltyEntity.setRuleId(request.ruleId());
         penaltyEntity.setAssignedTo(request.assignedTo());
+
+        producer.send(request.assignedTo(), NotificationMessages.CREATE_PENALTY);
 
         return PenaltyMapper.INSTANCE.toDto(penaltyRepository.save(penaltyEntity));
     }
@@ -89,12 +95,14 @@ public class PenaltyService {
     public PenaltyDto changeStatus(UUID penaltyId, PaymentStatus status) {
         PenaltyEntity entity = penaltyRepository.findById(penaltyId).orElseThrow(() ->
                 new NotFoundException("Штраф для изменения статуса не найден."));
-
         entity.setStatus(status);
+
+        producer.sendToAllApartmentUsers(NotificationMessages.CHANGE_PENALTY_STATUS);
 
         return PenaltyMapper.INSTANCE.toDto(penaltyRepository.save(entity));
     }
 
+    @Transactional
     public void deletePenalty(UUID penaltyId) {
         penaltyRepository.deleteById(penaltyId);
     }
