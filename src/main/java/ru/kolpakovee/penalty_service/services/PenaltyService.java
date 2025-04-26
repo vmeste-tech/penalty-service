@@ -57,7 +57,7 @@ public class PenaltyService {
                 .collect(Collectors.toMap(RuleDto::id, ruleDto -> ruleDto));
 
         // Просроченные задачи
-        List<TaskDto> tasks = taskServiceClient.getOverdueTasks(apartmentId)
+        List<TaskDto> overdueTasks = taskServiceClient.getOverdueTasks(apartmentId)
                 .stream()
                 .filter(t -> t.scheduledAt().isBefore(ZonedDateTime.now()))
                 .filter(t -> !t.isPenaltyCreated())
@@ -66,16 +66,21 @@ public class PenaltyService {
         Map<UUID, UserInfoDto> users = userServiceClient.getApartmentByToken().users().stream()
                 .collect(Collectors.toMap(UserInfoDto::id, u -> u));
 
-        tasks.forEach(t -> {
-            PenaltyEntity penaltyEntity = new PenaltyEntity();
-            penaltyEntity.setApartmentId(apartmentId);
-            penaltyEntity.setAssignedDate(t.scheduledAt().toLocalDateTime());
-            penaltyEntity.setRuleId(t.ruleId());
-            penaltyEntity.setFineAmount(rules.get(t.ruleId()).penaltyAmount());
-            penaltyEntity.setStatus(PaymentStatus.UNPAID);
-            penaltyEntity.setAssignedTo(t.assignedTo());
-            // TODO: изменить статус задачи на штраф создан
-            penaltyRepository.save(penaltyEntity);
+        List<PenaltyEntity> existedPenalties = penaltyRepository.findAllByApartmentId(apartmentId);
+
+        overdueTasks.forEach(t -> {
+            if (!penaltyExists(existedPenalties, t.ruleId(), t.scheduledAt().toLocalDateTime())) {
+                PenaltyEntity penaltyEntity = new PenaltyEntity();
+                penaltyEntity.setApartmentId(apartmentId);
+                penaltyEntity.setAssignedDate(t.scheduledAt().toLocalDateTime());
+                penaltyEntity.setRuleId(t.ruleId());
+                penaltyEntity.setFineAmount(rules.get(t.ruleId()).penaltyAmount());
+                penaltyEntity.setStatus(PaymentStatus.UNPAID);
+                penaltyEntity.setAssignedTo(t.assignedTo());
+                taskServiceClient.changePenaltyStatus(t.id(), true);
+                penaltyRepository.save(penaltyEntity);
+                existedPenalties.add(penaltyEntity);
+            }
         });
 
         return penaltyRepository.findAllByApartmentId(apartmentId)
@@ -105,5 +110,14 @@ public class PenaltyService {
     @Transactional
     public void deletePenalty(UUID penaltyId) {
         penaltyRepository.deleteById(penaltyId);
+    }
+
+    /**
+     * Проверяет, существует ли уже штраф для данной задачи в указанное время.
+     */
+    private boolean penaltyExists(List<PenaltyEntity> existedPenalties, UUID ruleId, LocalDateTime assignedDate) {
+        return existedPenalties.stream()
+                .anyMatch(penalty -> penalty.getRuleId().equals(ruleId)
+                        && penalty.getAssignedDate().equals(assignedDate));
     }
 }
